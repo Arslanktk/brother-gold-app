@@ -1,32 +1,50 @@
 name: Build APK
 
-on: [push]
+on:
+  push:
+    branches: [ main, develop ]  # Adjust as needed
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: brother-gold-app  # All steps run here by default
+
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
+          cache-dependency-path: brother-gold-app/package-lock.json
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
+        # working-directory inherited from defaults
 
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      - name: Build APK
+      - name: Build APK with EAS
         run: eas build --platform android --profile preview --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Upload APK
+      - name: Download Built APK
+        run: |
+          echo "Downloading latest build..."
+          eas build:download --platform android --latest --path .
+        # Still in brother-gold-app
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: brother-gold-apk
-          path: dist/*.apk
+          path: brother-gold-app/*.apk
+          if-no-files-found: error
